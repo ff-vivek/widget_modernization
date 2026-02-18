@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'index.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SemanticsBinding.instance.ensureSemantics();
   GoRouter.optionURLReflectsImperativeAPIs = true;
   usePathUrlStrategy();
 

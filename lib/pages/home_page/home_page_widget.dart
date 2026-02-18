@@ -78,7 +78,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
           top: true,
           child: Padding(
             padding: EdgeInsetsDirectional.fromSTEB(16.0, 0.0, 16.0, 0.0),
-            child: Column(
+            child: Semantics(
+            explicitChildNodes: true,
+            child:Column(
               mainAxisSize: MainAxisSize.max,
               children: [
                 wrapWithModel(
@@ -97,6 +99,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                   child: DropdownModelWidget(),
                 ),
               ].divide(SizedBox(height: 16.0)).around(SizedBox(height: 16.0)),
+            )
             ),
           ),
         ),

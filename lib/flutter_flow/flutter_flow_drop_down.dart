@@ -229,53 +229,76 @@ class _FlutterFlowDropDownState<T> extends State<FlutterFlowDropDown<T>> {
       )
       .toList();
 
-  List<DropdownMenuItem<T>> _createMultiselectMenuItems() => widget.options
+  List<DropdownItem<T>> _createDropdownItems() => widget.options
       .map(
-        (item) => DropdownMenuItem<T>(
+        (option) => DropdownItem<T>(
+          key: widget.optionsHasValueKeys ? _getItemKey(option) : null,
+          value: option,
+          child: Padding(
+            padding: horizontalMargin,
+            child: Text(
+              optionLabels[option] ?? '',
+              style: widget.textStyle,
+            ),
+          ),
+        ),
+      )
+      .toList();
+
+  List<DropdownItem<T>> _createMultiselectDropdownItems() => widget.options
+      .map(
+        (item) => DropdownItem<T>(
           key: widget.optionsHasValueKeys ? _getItemKey(item) : null,
           value: item,
-          // Disable default onTap to avoid closing menu when selecting an item
-          enabled: false,
-          child: StatefulBuilder(
-            builder: (context, menuSetState) {
-              final isSelected =
-                  multiSelectController.value?.contains(item) ?? false;
-              return InkWell(
-                  onTap: () {
-                    multiSelectController.value ??= [];
-                    isSelected
-                        ? multiSelectController.value!.remove(item)
-                        : multiSelectController.value!.add(item);
-                    multiSelectController.update();
-                    // This rebuilds the StatefulWidget to update the button's text.
-                    setState(() {});
-                    // This rebuilds the dropdownMenu Widget to update the check mark.
-                    menuSetState(() {});
-                  },
-                  child: Container(
-                    height: double.infinity,
-                    padding: horizontalMargin,
-                    child: Row(
-                      children: [
-                        if (isSelected)
-                          const Icon(Icons.check_box_outlined)
-                        else
-                          const Icon(Icons.check_box_outline_blank),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            optionLabels[item]!,
-                            style: widget.textStyle,
-                          ),
-                        ),
-                      ],
+          closeOnTap: false,
+          onTap: () {
+            multiSelectController.value ??= [];
+            final isSelected =
+                multiSelectController.value?.contains(item) ?? false;
+            if (isSelected) {
+              multiSelectController.value!.remove(item);
+            } else {
+              multiSelectController.value!.add(item);
+            }
+            multiSelectController.update();
+            setState(() {});
+          },
+          child: ValueListenableBuilder<List<T>?>(
+            valueListenable: multiSelectController,
+            builder: (context, value, _) {
+              final isSelected = value?.contains(item) ?? false;
+              return Container(
+                height: double.infinity,
+                padding: horizontalMargin,
+                child: Row(
+                  children: [
+                    if (isSelected)
+                      const Icon(Icons.check_box_outlined)
+                    else
+                      const Icon(Icons.check_box_outline_blank),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        optionLabels[item]!,
+                        style: widget.textStyle,
+                      ),
                     ),
-                  ));
+                  ],
+                ),
+              );
             },
           ),
         ),
       )
       .toList();
+
+  /// Exposes controller value only when it exists in [widget.options],
+  /// so DropdownButton2's assertion (exactly one matching item) is satisfied.
+  ValueListenable<T?> _singleValueListenable() =>
+      _SingleValueListenable<T>(controller, widget.options);
+
+  ValueListenable<Iterable<T>> _multiValueListenable() =>
+      _MultiValueListenable<T>(multiSelectController, widget.options);
 
   Widget _buildDropdown() {
     final overlayColor = WidgetStateProperty.resolveWith<Color?>((states) =>
@@ -284,9 +307,12 @@ class _FlutterFlowDropDownState<T> extends State<FlutterFlowDropDown<T>> {
         ? IconStyleData(icon: widget.icon!)
         : const IconStyleData();
     return DropdownButton2<T>(
-      value: currentValue,
+      valueListenable: isMultiSelect ? null : _singleValueListenable(),
+      multiValueListenable: isMultiSelect ? _multiValueListenable() : null,
       hint: _createHintText(),
-      items: isMultiSelect ? _createMultiselectMenuItems() : _createMenuItems(),
+      items: isMultiSelect
+          ? _createMultiselectDropdownItems()
+          : _createDropdownItems(),
       iconStyleData: iconStyleData,
       buttonStyleData: ButtonStyleData(
         elevation: widget.elevation.toInt(),
@@ -331,8 +357,8 @@ class _FlutterFlowDropDownState<T> extends State<FlutterFlowDropDown<T>> {
       dropdownSearchData: widget.isSearchable
           ? DropdownSearchData<T>(
               searchController: _textEditingController,
-              searchInnerWidgetHeight: 50,
-              searchInnerWidget: Container(
+              searchBarWidgetHeight: 50,
+              searchBarWidget: Container(
                 height: 50,
                 padding: const EdgeInsets.only(
                   top: 8,
@@ -361,13 +387,14 @@ class _FlutterFlowDropDownState<T> extends State<FlutterFlowDropDown<T>> {
                 ),
               ),
               searchMatchFn: (item, searchValue) {
-                return (optionLabels[item.value] ?? '')
-                    .toLowerCase()
-                    .contains(searchValue.toLowerCase());
+                final value = item.value;
+                return value != null &&
+                    (optionLabels[value] ?? '')
+                        .toLowerCase()
+                        .contains(searchValue.toLowerCase());
               },
             )
           : null,
-      // This is to clear the search value when you close the menu
       onMenuStateChange: widget.isSearchable
           ? (isOpen) {
               if (!isOpen) {
@@ -377,4 +404,51 @@ class _FlutterFlowDropDownState<T> extends State<FlutterFlowDropDown<T>> {
           : null,
     );
   }
+}
+
+/// Wraps [FormFieldController<T?>] and only exposes a value when it is in
+/// [validValues], so DropdownButton2's unique-value assertion is satisfied.
+class _SingleValueListenable<T> implements ValueListenable<T?> {
+  _SingleValueListenable(this._controller, this._validValues);
+
+  final FormFieldController<T?> _controller;
+  final List<T> _validValues;
+
+  @override
+  T? get value {
+    final v = _controller.value;
+    return _validValues.contains(v) ? v : null;
+  }
+
+  @override
+  void addListener(VoidCallback listener) =>
+      _controller.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) =>
+      _controller.removeListener(listener);
+}
+
+/// Wraps [FormFieldController<List<T>?>] as [ValueListenable<Iterable<T>>]
+/// for DropdownButton2 multiValueListenable. Only exposes values that are in
+/// [validValues] so the package's assertion is satisfied.
+class _MultiValueListenable<T> implements ValueListenable<Iterable<T>> {
+  _MultiValueListenable(this._controller, this._validValues);
+
+  final FormFieldController<List<T>?> _controller;
+  final List<T> _validValues;
+
+  @override
+  Iterable<T> get value {
+    final list = _controller.value ?? const [];
+    return list.where((v) => _validValues.contains(v));
+  }
+
+  @override
+  void addListener(VoidCallback listener) =>
+      _controller.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) =>
+      _controller.removeListener(listener);
 }
