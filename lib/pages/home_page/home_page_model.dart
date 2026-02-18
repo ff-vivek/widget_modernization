@@ -13,6 +13,10 @@ import 'package:provider/provider.dart';
 class HomePageModel extends FlutterFlowModel<HomePageWidget> {
   ///  State fields for stateful widgets in this page.
 
+  // State field(s) for NameField widget.
+  FocusNode? nameFieldFocusNode;
+  TextEditingController? nameFieldTextController;
+  String? Function(BuildContext, String?)? nameFieldTextControllerValidator;
   // Model for dropdown_number component.
   late DropdownNumberModel dropdownNumberModel;
   // Model for dropdown_string component.
@@ -29,6 +33,9 @@ class HomePageModel extends FlutterFlowModel<HomePageWidget> {
 
   @override
   void dispose() {
+    nameFieldFocusNode?.dispose();
+    nameFieldTextController?.dispose();
+
     dropdownNumberModel.dispose();
     dropdownStringModel.dispose();
     dropdownModelModel.dispose();
