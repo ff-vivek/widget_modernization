@@ -1,6 +1,8 @@
 # WidgetModernization
 
-A new Flutter project.
+A FlutterFlow project demonstrating widget modernization patterns — updated dropdown components, text fields, accessibility improvements, and focus traversal ordering.
+
+**FlutterFlow Project:** [widget-modernization-vkas46](https://enterprise-india.flutterflow.io/project/widget-modernization-vkas46)
 
 ## Getting Started
 
